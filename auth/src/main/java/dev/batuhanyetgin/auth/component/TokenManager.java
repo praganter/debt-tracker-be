@@ -14,7 +14,6 @@ import java.util.function.Function;
 public class TokenManager {
 
 
-    private final Date currenTime = new Date(System.currentTimeMillis());
     @Value("${jwt.validity}")
     private String validity;
     @Value("${jwt.secretKey}")
@@ -22,12 +21,16 @@ public class TokenManager {
     @Value("${jwt.validity.long}")
     private String validityLong;
 
+    private Date setTime() {
+        return new Date(System.currentTimeMillis());
+    }
+
     public String generateToken(String email) {
         return Jwts.builder()
                 .subject(email)
-                .issuedAt(currenTime)
+                .issuedAt(setTime())
                 .issuer("debtTracker.app")
-                .expiration(new Date(currenTime.getTime() + Long.parseLong(validity)))
+                .expiration(new Date(setTime().getTime() + Long.parseLong(validity)))
                 .signWith(convertSecretKey(secretKey))
                 .compact();
 
@@ -36,9 +39,9 @@ public class TokenManager {
     public String generateRefreshToken(String email) {
         return Jwts.builder()
                 .subject(email)
-                .issuedAt(currenTime)
+                .issuedAt(setTime())
                 .issuer("debtTracker.app")
-                .expiration(new Date(System.currentTimeMillis() + Long.parseLong(validityLong)))
+                .expiration(new Date(setTime().getTime() + Long.parseLong(validityLong)))
                 .signWith(convertSecretKey(secretKey))
                 .compact();
 
@@ -49,9 +52,8 @@ public class TokenManager {
     }
 
     public boolean isExpired(String token) {
-        return parseClaim(token, Claims::getExpiration).before(currenTime);
+        return parseClaim(token, Claims::getExpiration).before(setTime());
     }
-
 
     private SecretKey convertSecretKey(String key) {
         return Keys.hmacShaKeyFor(key.getBytes());
