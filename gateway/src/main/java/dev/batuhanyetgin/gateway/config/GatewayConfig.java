@@ -19,6 +19,9 @@ public class GatewayConfig {
                 .route("auth", r -> r.path("/v1/auth/**")
                         .filters(f -> f.filter(filter))
                         .uri("http://localhost:8089"))
+                .route("debt", r -> r.path("/v1/debt/**")
+                        .filters(f -> f.filter(filter))
+                        .uri("http://localhost:8898"))
                 .build();
     }
 
