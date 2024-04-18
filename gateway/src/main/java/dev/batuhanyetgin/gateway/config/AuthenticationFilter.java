@@ -32,13 +32,13 @@ public class AuthenticationFilter implements GatewayFilter {
         log.warn(String.valueOf(routerValidator.isSecured.test(request)));
         if (routerValidator.isSecured.test(request)) {
             if (this.isAuthMissing(request)) {
-                return this.onError(exchange, HttpStatus.UNAUTHORIZED);
+                return this.onError(exchange, HttpStatus.FAILED_DEPENDENCY);
             }
 
             final String token = this.getAuthHeader(request).substring(7);
 
             if (tokenManager.isExpired(token)) {
-                return this.onError(exchange, HttpStatus.FORBIDDEN);
+                return this.onError(exchange, HttpStatus.UNAUTHORIZED);
             }
         }
         return chain.filter(exchange);
