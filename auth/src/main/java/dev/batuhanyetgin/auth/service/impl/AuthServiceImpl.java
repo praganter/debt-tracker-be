@@ -30,7 +30,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public RegisterResponseDto register(RegisterDto registerDto) throws AlreadyRegisteredException {
-        String refreshToken = "";
+        String refreshToken ="";
+
         if (userRepository.existsByEmail(registerDto.getEmail())) {
             throw new AlreadyRegisteredException("Email already registered.");
         }
@@ -38,21 +39,10 @@ public class AuthServiceImpl implements AuthService {
         UserEntity newUser = userRepository.save(modelMapper.map(registerDto, UserEntity.class));
         if (newUser.getEmail().equals(registerDto.getEmail())
                 && registerDto.getPassword().equals(newUser.getPassword())) {
+            refreshToken= addRefreshTokenNewUserAndReturnRefreshToken(newUser.getEmail());
             log.info("Registered user: {}", registerDto.getEmail());
-            refreshToken = addRefreshTokenNewUserAndReturnRefreshToken(registerDto.getEmail());
-
         }
-        return new RegisterResponseDto("Successfully registered with " + registerDto.getEmail(), refreshToken);
-    }
-
-    private String addRefreshTokenNewUserAndReturnRefreshToken(String eMail) {
-        UserEntity newlyAddedUser = userRepository.getByEmail(eMail);
-        RefreshTokenEntity refreshToken = new RefreshTokenEntity();
-        refreshToken.setToken(tokenManager.generateRefreshToken(eMail));
-        refreshToken.setUserId(newlyAddedUser.getId());
-        refreshTokenRepository.save(refreshToken);
-        log.info("New refresh token created -> {}", refreshToken);
-        return refreshToken.getToken();
+        return new RegisterResponseDto("Successfully registered with " + registerDto.getEmail(),refreshToken);
     }
 
     @Override
@@ -71,8 +61,16 @@ public class AuthServiceImpl implements AuthService {
         UserEntity user = userRepository.getByEmail(userMail);
         RefreshTokenEntity refreshToken = refreshTokenRepository.getByUserId(user.getId());
         if (refreshToken.getToken().equals(oldToken)) {
-            return new RefreshTokenDto(tokenManager.generateToken(getEmailByToken(oldToken)),
-                    tokenManager.generateRefreshToken(getEmailByToken(oldToken)));
+            String newToken= tokenManager.generateRefreshToken(getEmailByToken(oldToken));
+            refreshToken.setToken(newToken);
+            refreshTokenRepository.save(refreshToken);
+            return RefreshTokenDto.builder()
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .id(user.getId())
+                    .token(tokenManager.generateToken(getEmailByToken(oldToken)))
+                    .refreshToken(newToken)
+                    .build();
         } else {
             throw new RefreshTokenNotValidException("Refresh token not valid.");
         }
@@ -111,5 +109,15 @@ public class AuthServiceImpl implements AuthService {
 
     private Boolean passwordMatches(String rawPass, String encodedPass) {
         return passwordEncoder.matches(rawPass, encodedPass);
+    }
+
+    private String addRefreshTokenNewUserAndReturnRefreshToken(String eMail) {
+        UserEntity newlyAddedUser = userRepository.getByEmail(eMail);
+        RefreshTokenEntity refreshToken = new RefreshTokenEntity();
+        refreshToken.setToken(tokenManager.generateRefreshToken(eMail));
+        refreshToken.setUserId(newlyAddedUser.getId());
+        refreshTokenRepository.save(refreshToken);
+        log.info("New refresh token created -> {}", refreshToken);
+        return refreshToken.getToken();
     }
 }
